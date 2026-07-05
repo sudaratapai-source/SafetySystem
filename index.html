@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ระบบความปลอดภัย LP</title>
+<style>
+  :root {
+    --green:#3B6D11;--green-bg:#EAF3DE;--green-dark:#27500A;
+    --red:#A32D2D;--red-bg:#FCEBEB;--red-dark:#791F1F;
+    --blue:#185FA5;--blue-bg:#E6F1FB;
+    --border:#e0e0e0;--surface:#f6f6f4;--card:#fff;
+    --text:#1a1a18;--muted:#6b6b68;--radius:8px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Sarabun',sans-serif;background:var(--surface);color:var(--text);font-size:15px}
+
+  .topbar{background:#1e2a1e;color:#fff;padding:12px 16px;display:flex;align-items:center;justify-content:space-between}
+  .topbar h1{font-size:15px;font-weight:500}
+  .sync-status{font-size:12px;opacity:.75;display:flex;align-items:center;gap:6px}
+  .dot{width:8px;height:8px;border-radius:50%;background:#4CAF50}
+  .dot.loading{background:#FFC107;animation:pulse 1s infinite}
+  .dot.error{background:#f44336}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+  .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--card);padding:0 12px;overflow-x:auto}
+  .tab{padding:11px 14px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:transparent;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+  .tab.active{color:var(--text);border-bottom-color:#1e2a1e}
+
+  .panel{display:none;padding:12px}.panel.active{display:block}
+
+  .card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px}
+  .card-title{font-size:14px;font-weight:500;margin-bottom:10px}
+
+  .meta-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+  .meta-field{display:flex;flex-direction:column;gap:3px;flex:1;min-width:120px}
+  .meta-label{font-size:11px;color:var(--muted)}
+  .meta-field input,.meta-field select{padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--card);color:var(--text)}
+
+  .floor-tabs{display:flex;gap:4px;margin-bottom:10px}
+  .ftab{padding:5px 14px;border-radius:20px;border:1px solid var(--border);background:transparent;font-size:12px;font-weight:500;cursor:pointer;color:var(--muted)}
+  .ftab.active{background:#1e2a1e;color:#fff;border-color:#1e2a1e}
+
+  .progress-bar{height:6px;background:#eee;border-radius:4px;overflow:hidden;margin:6px 0 3px}
+  .progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width .4s}
+  .progress-label{font-size:12px;color:var(--muted)}
+  .stat-row{display:flex;gap:14px;margin-top:6px;font-size:13px}
+  .stat-ok{color:var(--green-dark)}.stat-fail{color:var(--red-dark)}.stat-muted{color:var(--muted)}
+
+  /* Grid */
+  .ext-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(60px,1fr));gap:5px;margin-bottom:12px}
+  .ext-btn{border-radius:7px;border:1px solid var(--border);background:#fafafa;cursor:pointer;padding:6px 4px;display:flex;flex-direction:column;align-items:center;gap:2px;color:var(--muted);transition:all .15s}
+  .ext-btn:hover{border-color:#999;color:var(--text)}
+  .ext-btn.pass{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+  .ext-btn.fail{background:var(--red-bg);border-color:var(--red);color:var(--red-dark)}
+  .ext-num{font-size:12px;font-weight:600}
+  .ext-type{font-size:9px;opacity:.75}
+  .ext-floor{font-size:9px;opacity:.6}
+
+  /* Door */
+  .check-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+  .check-row:last-child{border-bottom:none}
+  .check-label{flex:1;font-size:13px}
+  .chk-grp{display:flex;gap:6px}
+  .chk-btn{width:30px;height:30px;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;font-size:14px;font-weight:600;transition:all .15s}
+  .chk-btn.pass{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+  .chk-btn.fail{background:var(--red-bg);border-color:var(--red);color:var(--red-dark)}
+  .badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:20px}
+  .badge-ok{background:var(--green-bg);color:var(--green-dark)}
+  .badge-fail{background:var(--red-bg);color:var(--red-dark)}
+  .badge-pending{background:#f0f0ee;color:var(--muted)}
+
+  .del-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;padding:2px 4px;border-radius:4px;flex-shrink:0}
+  .del-btn:hover{color:var(--red);background:var(--red-bg)}
+
+  /* Summary */
+  .sum-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+  .sum-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 12px}
+  .sum-label{font-size:11px;color:var(--muted);margin-bottom:3px}
+  .sum-val{font-size:24px;font-weight:500}
+  .sum-sub{font-size:11px;color:var(--muted);margin-top:1px}
+
+  /* Modal */
+  .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center;padding:16px}
+  .modal-backdrop.open{display:flex}
+  .modal{background:var(--card);border-radius:12px;padding:18px;width:100%;max-width:370px;max-height:88vh;overflow-y:auto}
+  .modal-title{font-size:15px;font-weight:500;margin-bottom:4px}
+  .modal-sub{font-size:12px;color:var(--muted);margin-bottom:12px}
+  .modal-check{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13px}
+  .modal-check:last-of-type{border-bottom:none}
+  .modal-check input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--green)}
+  .modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;padding-top:12px;border-top:1px solid var(--border)}
+  textarea{width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;resize:none;font-family:inherit}
+
+  .btn{padding:8px 16px;border-radius:var(--radius);border:1px solid var(--border);background:transparent;cursor:pointer;font-size:13px;font-weight:500;font-family:inherit}
+  .btn:hover{background:var(--surface)}
+  .btn-green{background:var(--green-bg);border-color:var(--green);color:var(--green-dark)}
+  .btn-green:hover{background:#C0DD97}
+  .btn-red{background:var(--red-bg);border-color:var(--red);color:var(--red-dark)}
+  .btn-dark{background:#1e2a1e;color:#fff;border-color:#1e2a1e}
+  .btn-dark:hover{background:#2d3d2d}
+
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1e2a1e;color:#fff;padding:9px 20px;border-radius:20px;font-size:13px;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;white-space:nowrap}
+  .toast.show{opacity:1}
+  .right{text-align:right}.flex-between{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .co2-note{font-size:11px;color:var(--muted);padding:4px 8px;background:#f9f7f2;border-radius:4px;margin-top:6px}
+  .qr-highlight{animation:qrflash 2.5s ease}
+  @keyframes qrflash{0%,100%{box-shadow:none}20%,60%{box-shadow:0 0 0 3px #ffb300}}
+</style>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div class="topbar">
+  <h1>🔒 ระบบความปลอดภัย — แผนก LP</h1>
+  <div class="sync-status">
+    <div class="dot" id="sync-dot"></div>
+    <span id="sync-label">ยังไม่เชื่อมต่อ</span>
+  </div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('ext')">🧯 ถังดับเพลิง</button>
+  <button class="tab" onclick="switchTab('door')">🚪 ประตูหนีไฟ</button>
+  <button class="tab" onclick="switchTab('summary')">📊 สรุป</button>
+</div>
+
+<!-- ===== ถังดับเพลิง ===== -->
+<div id="panel-ext" class="panel active">
+  <div id="dashboard-notice" style="background:#fff8e1;border:1px solid #ffc107;border-radius:var(--radius);padding:9px 14px;margin-bottom:10px;font-size:13px;display:flex;align-items:center;gap:8px">
+    🔳 <span>หน้านี้แสดงสถานะเท่านั้น — <b>สแกน QR ที่ถัง/ประตูจริง</b> เพื่อกรอกผลการตรวจ</span>
+  </div>
+  <div class="card">
+    <div class="meta-row">
+      <div class="meta-field">
+        <span class="meta-label">เดือน/ปี</span>
+        <input type="month" id="ext-month" onchange="loadExtData()" />
+      </div>
+      <div class="meta-field" id="inspector-field">
+        <span class="meta-label">ผู้ตรวจ</span>
+        <select id="ext-inspector" onchange="localStorage.setItem('last_inspector',this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--card);color:var(--text);width:100%">
+          <option value="">-- เลือกผู้ตรวจ --</option>
+          <option>สุดารัตน์ อะภัย</option>
+          <option>ธนชัย ดีเพชร์</option>
+          <option>ธีรศักดิ์ แสงสิทธิ์</option>
+          <option>วุฒิชัย กล่ำแก้ว</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+      <span style="font-size:13px;color:var(--muted)">ความคืบหน้าเดือนนี้</span>
+      <span style="font-size:13px;font-weight:500" id="ext-prog-label">0 / 92 ถัง</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="ext-prog-fill" style="width:0%"></div></div>
+    <div class="stat-row">
+      <span class="stat-ok">✓ ผ่าน: <b id="ext-pass">0</b></span>
+      <span class="stat-fail">✗ มีปัญหา: <b id="ext-fail">0</b></span>
+      <span class="stat-muted">รอ: <b id="ext-pending">92</b></span>
+    </div>
+  </div>
+
+  <!-- Filter by floor -->
+  <div class="floor-tabs">
+    <button class="ftab active" onclick="setFloor('all')">ทั้งหมด</button>
+    <button class="ftab" onclick="setFloor('F1')">ชั้น 1</button>
+    <button class="ftab" onclick="setFloor('F2')">ชั้น 2</button>
+    <button class="ftab" onclick="setFloor('F3')">ชั้น 3</button>
+  </div>
+
+  <div class="ext-grid" id="ext-grid"></div>
+
+  <!-- เช็คลิสต์ถังแบบเต็มหน้า (แสดงเฉพาะเมื่อสแกน QR) -->
+  <div id="ext-qr-checklist" style="display:none"></div>
+
+  <div class="right"><button class="btn btn-green" onclick="exportExtCSV()">⬇ Export CSV</button></div>
+</div>
+
+<!-- ===== ประตูหนีไฟ ===== -->
+<div id="panel-door" class="panel">
+  <div id="dashboard-notice-door" style="background:#fff8e1;border:1px solid #ffc107;border-radius:var(--radius);padding:9px 14px;margin-bottom:10px;font-size:13px;display:flex;align-items:center;gap:8px">
+    🔳 <span>หน้านี้แสดงสถานะเท่านั้น — <b>สแกน QR ที่ประตูจริง</b> เพื่อกรอกผลการตรวจ</span>
+  </div>
+  <div class="card">
+    <div class="meta-row">
+      <div class="meta-field">
+        <span class="meta-label">วันที่</span>
+        <input type="date" id="door-date" onchange="loadDoorData()" />
+      </div>
+    </div>
+    <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+      <span style="font-size:13px;color:var(--muted)">ความคืบหน้าวันนี้</span>
+      <span style="font-size:13px;font-weight:500" id="door-prog-label">0 / 10 จุด</span>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="door-prog-fill" style="width:0%"></div></div>
+    <div class="stat-row">
+      <span class="stat-ok">✓ ผ่าน: <b id="door-pass-count">0</b></span>
+      <span class="stat-fail">✗ มีปัญหา: <b id="door-fail-count">0</b></span>
+      <span class="stat-muted">รอ: <b id="door-pending-count">10</b></span>
+    </div>
+  </div>
+
+  <!-- Door grid -->
+  <div id="door-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:12px"></div>
+
+  <!-- Detail cards (แสดงเฉพาะเมื่อสแกน QR) -->
+  <div id="door-list"></div>
+  <div class="right" style="margin-top:8px"><button class="btn btn-green" onclick="exportDoorCSV()">⬇ Export CSV</button></div>
+</div>
+
+<!-- ===== สรุป ===== -->
+<div id="panel-summary" class="panel">
+
+  <!-- Auto-refresh indicator -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+    <span style="font-size:12px;color:var(--muted)">🔄 อัพเดตอัตโนมัติทุก 30 วินาที</span>
+    <span style="font-size:12px;color:var(--muted)" id="sum-last-update">-</span>
+  </div>
+
+  <!-- ===== ถังดับเพลิง (เดือน) ===== -->
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:15px;font-weight:500">🧯 ถังดับเพลิง</span>
+      <span style="font-size:12px;color:var(--muted)" id="sum-ext-month">-</span>
+    </div>
+    <!-- big number -->
+    <div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:8px">
+      <span style="font-size:42px;font-weight:500;line-height:1;color:var(--green)" id="sum-ext-checked">-</span>
+      <span style="font-size:18px;color:var(--muted);margin-bottom:6px">/ 92 ถัง</span>
+    </div>
+    <!-- progress bar -->
+    <div class="progress-bar" style="height:8px;margin-bottom:6px"><div class="progress-fill" id="sum-ext-bar" style="width:0%"></div></div>
+    <!-- stat row -->
+    <div style="display:flex;gap:16px;font-size:13px">
+      <span style="color:var(--green-dark)">✓ ผ่าน: <b id="sum-ext-pass">0</b></span>
+      <span style="color:var(--red-dark)">✗ มีปัญหา: <b id="sum-ext-fail">0</b></span>
+      <span style="color:var(--muted)">รอ: <b id="sum-ext-pending">92</b></span>
+    </div>
+    <!-- mini grid สถานะ -->
+    <div id="sum-ext-mini" style="display:flex;flex-wrap:wrap;gap:3px;margin-top:10px"></div>
+  </div>
+
+  <!-- ===== ประตูหนีไฟ (วัน) ===== -->
+  <div class="card" style="margin-bottom:10px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span style="font-size:15px;font-weight:500">🚪 ประตูหนีไฟ</span>
+      <span style="font-size:12px;color:var(--muted)" id="sum-door-date">-</span>
+    </div>
+    <!-- big number -->
+    <div style="display:flex;align-items:flex-end;gap:6px;margin-bottom:8px">
+      <span style="font-size:42px;font-weight:500;line-height:1;color:var(--blue)" id="sum-door-checked">-</span>
+      <span style="font-size:18px;color:var(--muted);margin-bottom:6px">/ 10 จุด</span>
+    </div>
+    <!-- progress bar -->
+    <div class="progress-bar" style="height:8px;margin-bottom:6px"><div class="progress-fill" id="sum-door-bar" style="width:0%;background:var(--blue)"></div></div>
+    <!-- stat row -->
+    <div style="display:flex;gap:16px;font-size:13px">
+      <span style="color:var(--green-dark)">✓ ผ่าน: <b id="sum-door-pass">0</b></span>
+      <span style="color:var(--red-dark)">✗ มีปัญหา: <b id="sum-door-fail">0</b></span>
+      <span style="color:var(--muted)">รอ: <b id="sum-door-pending">10</b></span>
+    </div>
+    <!-- door status grid -->
+    <div id="sum-door-mini" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:10px"></div>
+  </div>
+
+  <!-- warning box ถ้ามีปัญหา -->
+  <div id="sum-warning" style="display:none;background:var(--red-bg);border:1px solid var(--red);border-radius:var(--radius);padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--red-dark)"></div>
+
+  <div class="right"><button class="btn btn-dark" onclick="loadSummary()">🔄 รีเฟรช</button></div>
+</div>
+
+<!-- MODAL ถังดับเพลิง -->
+<div class="modal-backdrop" id="ext-modal">
+  <div class="modal">
+    <div class="modal-title" id="modal-ext-title">ถังที่ 1</div>
+    <div class="modal-sub" id="modal-ext-sub"></div>
+    <div style="margin-bottom:10px">
+      <span style="font-size:12px;color:var(--muted)">ผู้ตรวจ</span>
+      <select id="modal-ext-inspector" onchange="localStorage.setItem('last_inspector',this.value)" style="width:100%;margin-top:4px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;background:var(--card);color:var(--text)">
+        <option value="">-- เลือกผู้ตรวจ --</option>
+        <option>สุดารัตน์ อะภัย</option>
+        <option>ธนชัย ดีเพชร์</option>
+        <option>ธีรศักดิ์ แสงสิทธิ์</option>
+        <option>วุฒิชัย กล่ำแก้ว</option>
+      </select>
+    </div>
+    <div id="modal-ext-body"></div>
+    <div style="margin-top:10px">
+      <span style="font-size:12px;color:var(--muted)">หมายเหตุ / ปัญหาที่พบ</span>
+      <textarea id="modal-ext-note" rows="2" placeholder="บันทึกสิ่งที่พบ..."></textarea>
+    </div>
+    <div id="co2-note" class="co2-note" style="display:none">⚠️ ถัง CO2 ไม่ต้องพลิก-คว่ำ</div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('ext-modal')">ยกเลิก</button>
+      <button class="btn btn-red" onclick="submitExt('fail')">✗ มีปัญหา</button>
+      <button class="btn btn-green" onclick="submitExt('pass')">✓ ผ่าน</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ====== รายชื่อผู้ตรวจ ======
+const INSPECTORS = [
+  'สุดารัตน์ อะภัย',
+  'ธนชัย ดีเพชร์',
+  'ธีรศักดิ์ แสงสิทธิ์',
+  'วุฒิชัย กล่ำแก้ว'
+];
+
+function inspectorSelect(id, style=''){
+  const saved = localStorage.getItem('last_inspector')||'';
+  return `<select id="${id}" onchange="localStorage.setItem('last_inspector',this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;background:var(--card);color:var(--text);${style}">
+    <option value="">-- เลือกผู้ตรวจ --</option>
+    ${INSPECTORS.map(n=>`<option value="${n}" ${n===saved?'selected':''}>${n}</option>`).join('')}
+  </select>`;
+}
+
+// ====== ข้อมูลถังจริงจาก Google Sheets ======
+const TANK_DATA = [
+  {num:1,loc:'หน้าห้อง F.M ตู้ F/H-01',floor:'F1',type:'ABCK'},
+  {num:2,loc:'ห้องEE. (1A) ห้องน้ำลูกค้าโหลด 1',floor:'F1',type:'CO2'},
+  {num:3,loc:'ห้องน้ำลูกค้าโหลด 1 ตู้ F/H-02',floor:'F1',type:'ABCK'},
+  {num:4,loc:'บันใดเลื่อนฝั่งร้านทอง',floor:'F1',type:'ABCK'},
+  {num:5,loc:'ห้องEE. (1B) ห้องน้ำลูกค้า Sukishi',floor:'F1',type:'CO2'},
+  {num:6,loc:'ห้องน้ำลูกค้า Sukishi ตู้ F/H-05',floor:'F1',type:'ABOK'},
+  {num:7,loc:'หน้าร้านชาบูชิ ตู้ F/H-08',floor:'F1',type:'ABOK'},
+  {num:8,loc:'ตรงข้ามร้าน S&P ตู้ F/H-09',floor:'F1',type:'ABOK'},
+  {num:9,loc:'ห้องEE. (1C) ประตูหนีไฟข้างร้าน MK',floor:'F1',type:'CO2'},
+  {num:10,loc:'ประตูหนีไฟข้างร้าน MK. ตู้ F/H-11',floor:'F1',type:'ABOK'},
+  {num:11,loc:'บันใดเลื่อนฝั่ง TOPS',floor:'F1',type:'ABCK'},
+  {num:12,loc:'โหลด 2 Stock RE. ตู้ F/H-13',floor:'F1',type:'ABOK'},
+  {num:13,loc:'ห้อง EE. (1D) โหลด 2',floor:'F1',type:'CO2'},
+  {num:14,loc:'หน้าร้าน MUJI ตู้ F/H-12',floor:'F1',type:'ABOK'},
+  {num:15,loc:'หน้าร้าน Sizzler ตู้ F/H-10',floor:'F1',type:'ABOK'},
+  {num:16,loc:'หน้าร้าน Starbucks ตู้ F/H-07',floor:'F1',type:'ABOK'},
+  {num:17,loc:'หน้าร้าน Ssamthing ตู้ F/H-06',floor:'F1',type:'ABOK'},
+  {num:18,loc:'หน้าร้าน Sushiro ตู้ F/H-04',floor:'F1',type:'ABOK'},
+  {num:19,loc:'Information',floor:'F1',type:'ABCK'},
+  {num:20,loc:'ข้างร้าน Global Art ตู้ F/H-15',floor:'F1',type:'ABCK'},
+  {num:21,loc:'บันใดเลื่อนฝั่ง BU. Power Buy',floor:'F2',type:'ABCK'},
+  {num:22,loc:'ในร้าน Power Buy ตู้ F/H-16',floor:'F2',type:'ABOK'},
+  {num:23,loc:'ห้องน้ำลูกค้า ข้าง PWB. ตู้ F/H-18',floor:'F2',type:'ABOK'},
+  {num:24,loc:'ห้องEE. (2A) ข้างห้องน้ำลูกค้า PWB.',floor:'F2',type:'CO2'},
+  {num:25,loc:'ข้างลิฟท์ ตู้ F/H-14',floor:'F2',type:'ABOK'},
+  {num:26,loc:'หน้า Canteen ตู้ F/H-17',floor:'F2',type:'ABOK'},
+  {num:27,loc:'Canteen 1/3',floor:'F2',type:'FOAM'},
+  {num:28,loc:'Canteen 2/3',floor:'F2',type:'FOAM'},
+  {num:29,loc:'Canteen 3/3',floor:'F2',type:'FOAM'},
+  {num:30,loc:'ห้องการเงิน',floor:'F2',type:'ABCK'},
+  {num:'30B',loc:'ห้อง Server',floor:'F2',type:'ABCK'},
+  {num:31,loc:'ทางเข้า OFFICE Mall ตู้ F/H-19',floor:'F2',type:'ABOK'},
+  {num:32,loc:'ห้อง EE. (2B) ข้างร้าน Ais',floor:'F2',type:'CO2'},
+  {num:33,loc:'ข้างร้าน Ais ตู้ F/H-20',floor:'F2',type:'ABOK'},
+  {num:34,loc:'ข้างร้าน พรเกษมคลีนิค ตู้ F/H-22',floor:'F2',type:'ABOK'},
+  {num:35,loc:'หน้าร้าน JIB. ตู้ F/H-21',floor:'F2',type:'ABOK'},
+  {num:36,loc:'ข้างร้าน Mushi Mushi ตู้ F/H-23',floor:'F2',type:'CO2'},
+  {num:37,loc:'หน้าห้องน้ำชาย Sky Club',floor:'F2',type:'ABCK'},
+  {num:38,loc:'หน้าห้องน้ำหญิง Sky Club',floor:'F2',type:'ABCK'},
+  {num:39,loc:'ห้องEE. (2C) ประตูหนีไฟข้าง Amazon',floor:'F2',type:'CO2'},
+  {num:40,loc:'ประตูหนีไฟข้าง Amazon ตู้ F/H-24',floor:'F2',type:'ABOK'},
+  {num:41,loc:'ระเบียงหน้า Amazon',floor:'F2',type:'ABCK'},
+  {num:42,loc:'บรรไดเลื่อน ฝั่ง Food Park',floor:'F2',type:'ABCK'},
+  {num:43,loc:'แคชเชียร Food Park',floor:'F2',type:'ABCK'},
+  {num:44,loc:'ข้าง Sun Day ตู้ F/H-26',floor:'F2',type:'ABOK'},
+  {num:45,loc:'Food Park ก้อนลอย',floor:'F2',type:'ABCK'},
+  {num:46,loc:'ข้าง MUJI ตู้ F/H-25',floor:'F2',type:'ABOK'},
+  {num:47,loc:'ครัว Food Park ฝั่ง MUJI 1/6',floor:'F2',type:'FOAM'},
+  {num:48,loc:'ครัว Food Park ฝั่ง MUJI 2/6',floor:'F2',type:'FOAM'},
+  {num:49,loc:'ครัว Food Park ฝั่ง MUJI 3/6',floor:'F2',type:'FOAM'},
+  {num:50,loc:'ครัว Food Park ฝั่ง MUJI 4/6',floor:'F2',type:'FOAM'},
+  {num:51,loc:'ครัว Food Park ฝั่ง MUJI 5/6',floor:'F2',type:'FOAM'},
+  {num:52,loc:'ครัว Food Park ฝั่ง MUJI 6/6',floor:'F2',type:'FOAM'},
+  {num:53,loc:'ครัว Food Park ฝั่งสต็อค 1/5',floor:'F2',type:'FOAM'},
+  {num:54,loc:'ครัว Food Park ฝั่งสต็อค 2/5',floor:'F2',type:'FOAM'},
+  {num:55,loc:'ครัว Food Park ฝั่งสต็อค 3/5',floor:'F2',type:'FOAM'},
+  {num:56,loc:'ครัว Food Park ฝั่งสต็อค 4/5',floor:'F2',type:'FOAM'},
+  {num:57,loc:'ครัว Food Park ฝั่งสต็อค 5/5',floor:'F2',type:'FOAM'},
+  {num:58,loc:'สต็อค Food Park ตู้ F/H-27',floor:'F2',type:'ABOK'},
+  {num:59,loc:'ห้อง EE.(2D) ข้างลิฟท์สต็อค Food',floor:'F2',type:'CO2'},
+  {num:60,loc:'ประตูหนีไฟสต็อค Food ตู้ F/H-28',floor:'F2',type:'ABOK'},
+  {num:61,loc:'หน้าร้าน Brewave ตู้ F/H-34',floor:'F2',type:'ABOK'},
+  {num:62,loc:'ระเบียง Sky Club 1/3',floor:'F2',type:'ABCK'},
+  {num:63,loc:'ระเบียง Sky Club 2/3',floor:'F2',type:'ABCK'},
+  {num:64,loc:'ระเบียง Sky Club 3/3',floor:'F2',type:'ABCK'},
+  {num:65,loc:'EE. บรรไดขึ้นชั้น 3 ฝั่งตรงข้าม',floor:'F2',type:'ABCK'},
+  {num:66,loc:'EE. บรรไดขึ้นชั้น 3 ฝั่งร้าน OKINA',floor:'F2',type:'ABCK'},
+  {num:67,loc:'ข้างลิฟท์ Sky Club ตู้ F/H-35',floor:'F3',type:'ABOK'},
+  {num:68,loc:'Fanroom สกายคลับ ตู้ F/H-32',floor:'F3',type:'CO2'},
+  {num:69,loc:'Fan Room ตู้ F/H-33',floor:'F3',type:'CO2'},
+  {num:70,loc:'Fan Room ข้างลิฟต์ ตู้ F/H-31',floor:'F3',type:'CO2'},
+  {num:71,loc:'ห้อง GEN',floor:'F3',type:'ABCK'},
+  {num:72,loc:'หน้าห้อง GEN. ตู้ F/H-30',floor:'F3',type:'ABOK'},
+  {num:73,loc:'ห้อง MDB.',floor:'F3',type:'CO2'},
+  {num:74,loc:'ห้อง CHILLER',floor:'F3',type:'CO2'},
+  {num:75,loc:'ห้อง CHILLER ตู้ F/H-29',floor:'F3',type:'CO2'},
+  {num:76,loc:'ห้อง EE. ข้าง STATION GAS',floor:'F1',type:'CO2'},
+  {num:77,loc:'STATION GAS 1/3',floor:'F1',type:'เคมี'},
+  {num:78,loc:'STATION GAS 2/3',floor:'F1',type:'เคมี'},
+  {num:79,loc:'STATION GAS 3/3',floor:'F1',type:'เคมี'},
+  {num:80,loc:'ภายในป้าย Tower Sign 1/2',floor:'F1',type:'ABCK'},
+  {num:81,loc:'ภายในป้าย Tower Sign 2/2',floor:'F1',type:'ABCK'},
+  {num:82,loc:'จุด VIP. Parking',floor:'F1',type:'ABCK'},
+  {num:83,loc:'ห้อง SUMP. ใกล้ประตู 4',floor:'F1',type:'CO2'},
+  {num:84,loc:'ห้อง SUMP. ใกล้จุดแลกรถเข็นสัตว์',floor:'F1',type:'CO2'},
+  {num:85,loc:'ห้อง EE. Common Playround',floor:'F1',type:'ABCK'},
+  {num:86,loc:'ห้อง SUMP. ใกล้ประตู 2',floor:'F1',type:'CO2'},
+  {num:87,loc:'ห้อง PUMP.',floor:'F1',type:'CO2'},
+  {num:88,loc:'ห้อง FIRE PUMP',floor:'F1',type:'CO2'},
+  {num:89,loc:'ห้อง SUMP. ใกล้โหลด 1',floor:'F1',type:'CO2'},
+  {num:90,loc:'จุดแลกบัตร ลานจอดรถจยย.',floor:'F1',type:'ABCK'},
+  {num:91,loc:'ข้างร้าน พิราทิส ตู้ F/H-02',floor:'F1',type:'ABCK'},
+  {num:92,loc:'ข้างร้าน Global Art ตู้ F/H-15',floor:'F1',type:'ABCK'},
+];
+
+// รายการตรวจ — CO2 ไม่ต้องพลิก-คว่ำ
+const EXT_CHECKS_FULL = ['มาตรวัดแรงดันอยู่ในเกณฑ์','ซีลและสลักครบถ้วน','สภาพตัวถังไม่ชำรุด','สายฉีดไม่แตกหรืออุดตัน','พลิก-คว่ำ (เฉพาะเคมีแห้ง/FOAM)'];
+const EXT_CHECKS_CO2  = ['มาตรวัดแรงดันอยู่ในเกณฑ์','ซีลและสลักครบถ้วน','สภาพตัวถังไม่ชำรุด','สายฉีดไม่แตกหรืออุดตัน'];
+
+const DOOR_POINTS = [
+  'ST.4 ทางขึ้น OFFICE — ชั้น 1',
+  'ST.4 Canteen — ชั้น 2',
+  'ST.3 Major — ชั้น 3',
+  'ST.4 Major — ชั้น 3',
+  'ST.9 Major — ชั้น 3',
+  'ST.3 Office Mall — ชั้น 2',
+  'ST.1 IT — ชั้น 2',
+  'ST.2 Amazon — ชั้น 2',
+  'ST.8 Foodpark — ชั้น 2',
+  'ST.7 ลิฟท์โหลด 2 — ชั้น 2'
+];
+const DOOR_CHECKS = [
+  '1. ประตูอยู่ในสภาพพร้อมใช้งาน ไม่ปิดล็อกตั้งแต่เวลาพนักงานเข้าทำงาน จนถึงเวลาปิดทำการ',
+  '2. ประตูหนีไฟอยู่ในสภาพพร้อมใช้งาน ไม่มีการชำรุดของ กลอน, สายยู',
+  '3. ประตูหนีไฟไม่มีการปิดล็อกด้วยกุญแจระหว่างเปิดทำการ',
+  '4. ประตูหนีไฟมีการปิดล็อกด้วยกุญแจระหว่างปิดทำการ',
+  '5. ประตูหนีไฟไม่มีสิ่งกีดขวางหน้าประตู',
+  '6. เส้นทางเดินสู่ประตูหนีไฟไม่มีสิ่งกีดขวาง',
+  '7. ระบบสัญญาณใช้งานได้ มีสัญญาณเสียงและแสงแจ้งเตือน (ตรวจจากสภาพภายนอก)',
+  '8. ระบบสัญญาณ Door Alarm พร้อมใช้งาน ไม่มีการชำรุดของอุปกรณ์และสายไฟ',
+  '9. ระบบเสียงสัญญาณ (Buzzer) พร้อมใช้งาน ไม่มีการชำรุดของ Buzzer และสายไฟ',
+  '10. ระบบสัญญาณแสง (Lamp) พร้อมใช้งาน ไม่มีการชำรุดของ Lamp และสายไฟ',
+  '11. Strip Lock ต้องอยู่ในสภาพ Lock และหมายเลขตรงกับที่กำหนด',
+  '12. Strip Lock อยู่ในสภาพสมบูรณ์ ไม่ขาดหรือหัก',
+  '13. Strip Lock คล้องอยู่ มีช่วงหางไม่เกิน 1 นิ้ว และไม่เกิน 2 นิ้วลอด',
+  '14. หมายเลข Strip Lock ตรงกับทะเบียนควบคุมประตูหนีไฟที่กำหนดไว้',
+  '15. Strip Lock คล้องอยู่ในหูช้างหรือสายยูที่กำหนด',
+  '16. ป้ายประตูหนีไฟอยู่ในสภาพพร้อมใช้งาน มีป้ายเตือนบทปรับเมื่อเปิดผิดวัตถุประสงค์',
+  '17. มีป้ายกล่องไฟเหนือประตู ไฟ Emergency ติดอยู่ตลอดเวลา หรือใช้วัสดุสะท้อนแสง',
+  '18. ป้ายกล่องไฟอยู่ในสภาพสมบูรณ์ ไม่ชำรุดหรือแตกร้าว'
+];
+
+// ข้อที่ต้องกรอกหมายเลข Strip Lock (index 10-14 คือข้อ 11-15)
+const DOOR_STRIPLOCK_IDX = [10, 11, 12, 13, 14];
+
+let API_URL = 'https://script.google.com/macros/s/AKfycbywmQjDuBLtzfF35BiltPh3N55_S6mcW4Ve6U3SlulZ8jEWyaLdwcwqvassXg30DlesdQ/exec';
+let extCache={}, doorCache={};
+let currentExt=null, modalChecks={};
+let currentFloor='all';
+// QR Mode — true เฉพาะเมื่อเข้าผ่านการสแกน QR เท่านั้น
+let isQRMode=false, currentQRNum=null, currentQRPoint=null;
+
+// ====== INIT ======
+window.onload = () => {
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('ext-month').value = today.slice(0,7);
+  document.getElementById('door-date').value = today;
+  // restore ผู้ตรวจคนล่าสุด
+  const saved = localStorage.getItem('last_inspector')||'';
+  const extSel = document.getElementById('ext-inspector');
+  if(saved && extSel) extSel.value = saved;
+  initSystem().then(()=>handleDeepLink());
+};
+
+// ====== QR DEEP LINK ======
+// รองรับ URL แบบ ?type=ext&num=34  หรือ  ?type=door&point=3
+function handleDeepLink(){
+  const params = new URLSearchParams(window.location.search);
+  const type = params.get('type');
+  if(!type) return; // เปิดปกติ = Dashboard mode
+
+  isQRMode = true; // เปิดผ่าน QR = อนุญาตให้กรอกข้อมูล
+  // ซ่อน notice และแสดงช่องผู้ตรวจ
+  const notice = document.getElementById('dashboard-notice');
+  if(notice) notice.style.display='none';
+  const noticeDoor = document.getElementById('dashboard-notice-door');
+  if(noticeDoor) noticeDoor.style.display='none';
+
+  if(type==='ext'){
+    const num = params.get('num');
+    currentQRNum = num;
+    const tank = TANK_DATA.find(t=>String(t.num)===String(num));
+    if(tank){
+      switchTab('ext');
+      setFloor('all');
+      setTimeout(()=>{
+        const existing = extCache[String(tank.num)];
+        renderExtQRChecklist(tank, existing);
+      }, 300);
+    }
+  } else if(type==='door'){
+    const pi = parseInt(params.get('point'));
+    currentQRPoint = pi;
+    if(!isNaN(pi) && DOOR_POINTS[pi]){
+      switchTab('door');
+      buildDoorList(); // rebuild with edit mode enabled for this point
+      setTimeout(()=>{
+        const card=document.getElementById('door-card-'+pi);
+        if(card){
+          card.scrollIntoView({behavior:'smooth', block:'center'});
+          card.classList.add('qr-highlight');
+          setTimeout(()=>card.classList.remove('qr-highlight'), 2500);
+        }
+      }, 300);
+    }
+  }
+}
+
+async function initSystem(){
+  setSyncStatus('loading','กำลังเชื่อมต่อ...');
+  try{
+    await api('GET',{action:'init'});
+    setSyncStatus('ok','เชื่อมต่อแล้ว');
+    showToast('✓ เชื่อมต่อ Google Sheets สำเร็จ');
+    await Promise.all([loadExtData(), loadDoorData()]);
+  }catch(e){
+    setSyncStatus('error','Offline mode');
+    showToast('⚠ ทำงานแบบ Offline');
+    buildExtGrid();
+    buildDoorList();
+  }
+}
+
+// ====== API ======
+async function api(method,params){
+  if(!API_URL) throw new Error('ยังไม่ได้ตั้งค่า URL');
+  setSyncStatus('loading','กำลังซิงค์...');
+  try{
+    let res;
+    if(method==='GET'){
+      res=await fetch(`${API_URL}?${new URLSearchParams(params)}`);
+    }else{
+      res=await fetch(API_URL,{method:'POST',body:JSON.stringify(params)});
+    }
+    const data=await res.json();
+    setSyncStatus('ok','บันทึกแล้ว '+timeNow());
+    return data;
+  }catch(e){
+    setSyncStatus('error','บันทึกไม่สำเร็จ');
+    throw e;
+  }
+}
+
+// ====== ถังดับเพลิง ======
+async function loadExtData(){
+  const month=document.getElementById('ext-month').value;
+  try{const r=await api('GET',{action:'getExt',month});extCache=r.data||{};buildExtGrid();}catch(e){buildExtGrid();}
+}
+
+function setFloor(f){
+  currentFloor=f;
+  document.querySelectorAll('.ftab').forEach(b=>b.classList.toggle('active',b.textContent.includes(f==='all'?'ทั้งหมด':f)));
+  buildExtGrid();
+}
+
+function buildExtGrid(){
+  const g=document.getElementById('ext-grid'); g.innerHTML='';
+  let pass=0,fail=0;
+  const filtered=currentFloor==='all'?TANK_DATA:TANK_DATA.filter(t=>t.floor===currentFloor);
+  filtered.forEach(t=>{
+    const key=String(t.num);
+    const d=extCache[key]||extCache[t.num];
+    const btn=document.createElement('button');
+    btn.className='ext-btn'+(d?(' '+d.status):'');
+    // Dashboard mode: แสดงสถานะอย่างเดียว ไม่คลิกได้
+    // คลิกได้เฉพาะเมื่อเปิดผ่าน QR (isQRMode = true)
+    if(isQRMode && currentQRNum && String(currentQRNum)===String(t.num)){
+      btn.onclick=()=>openExtModal(t,d);
+    } else {
+      btn.style.cursor='default';
+      btn.title=`ถังที่ ${t.num} — ${t.loc}\n${d?('สถานะ: '+(d.status==='pass'?'✓ ผ่าน':'✗ มีปัญหา')):'ยังไม่ได้ตรวจ'}`;
+    }
+    btn.innerHTML=`<span class="ext-num">${t.num}</span><span class="ext-type">${t.type}</span><span class="ext-floor">${t.floor}</span>`;
+    g.appendChild(btn);
+    if(d?.status==='pass')pass++;
+    else if(d?.status==='fail')fail++;
+  });
+  const total=92, done=Object.values(extCache).filter(d=>d?.status).length;
+  const passAll=Object.values(extCache).filter(d=>d?.status==='pass').length;
+  const failAll=done-passAll;
+  document.getElementById('ext-prog-fill').style.width=(done/total*100)+'%';
+  document.getElementById('ext-prog-fill').style.width=(done/total*100)+'%';
+  document.getElementById('ext-prog-label').textContent=`${done} / ${total} ถัง`;
+  document.getElementById('ext-pass').textContent=passAll;
+  document.getElementById('ext-fail').textContent=failAll;
+  document.getElementById('ext-pending').textContent=total-done;
+}
+
+function renderExtQRChecklist(tank, existing){
+  const wrap = document.getElementById('ext-qr-checklist');
+  wrap.style.display = 'block';
+  // เลื่อน grid ลงให้เห็นเช็คลิสต์
+  wrap.scrollIntoView({behavior:'smooth', block:'start'});
+
+  const isCO2 = tank.type==='CO2';
+  const checks = isCO2 ? EXT_CHECKS_CO2 : EXT_CHECKS_FULL;
+  const status = existing?.status||'pending';
+  const bc = status==='pass'?'badge-ok':status==='fail'?'badge-fail':'badge-pending';
+  const bt = status==='pass'?'ผ่าน':status==='fail'?'มีปัญหา':'รอตรวจ';
+  const saved = localStorage.getItem('last_inspector')||'';
+
+  wrap.innerHTML = '';
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.style.cssText = 'border:2px solid #ffb300;margin-bottom:10px';
+
+  // Header
+  card.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div>
+        <div style="font-size:16px;font-weight:500">🔳 ถังที่ ${tank.num}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">${tank.type} | ชั้น ${tank.floor} | ${tank.loc}</div>
+      </div>
+      <span class="badge ${bc}">${bt}</span>
+    </div>
+  `;
+
+  // ผู้ตรวจ
+  const metaRow = document.createElement('div');
+  metaRow.className = 'meta-row';
+  metaRow.style.marginBottom = '12px';
+  metaRow.innerHTML = `
+    <div class="meta-field">
+      <span class="meta-label">ผู้ตรวจ</span>
+      <select id="ext-qr-inspector" onchange="localStorage.setItem('last_inspector',this.value)"
+        style="padding:8px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:14px;width:100%;background:var(--card);color:var(--text)">
+        <option value="">-- เลือกผู้ตรวจ --</option>
+        ${INSPECTORS.map(n=>`<option value="${n}" ${n===saved?'selected':''}>${n}</option>`).join('')}
+      </select>
+    </div>
+  `;
+  card.appendChild(metaRow);
+
+  // เช็คลิสต์
+  const checkState = {};
+  checks.forEach((c,i)=>{
+    const val = existing?.checks?.[i]??false;
+    if(val) checkState[i]=true;
+    const row = document.createElement('div');
+    row.className = 'check-row';
+    row.innerHTML = `<span class="check-label">${c}</span>
+      <div class="chk-grp">
+        <button class="chk-btn${val?' pass':''}" onclick="setExtCheck(${i},'pass',this)">✓</button>
+        <button class="chk-btn${val===false&&existing?' fail':''}" onclick="setExtCheck(${i},'fail',this)">✗</button>
+      </div>`;
+    card.appendChild(row);
+  });
+  wrap._checkState = checkState;
+  wrap._tank = tank;
+
+  // CO2 note
+  if(isCO2){
+    const note = document.createElement('div');
+    note.className = 'co2-note';
+    note.textContent = '⚠️ ถัง CO2 ไม่ต้องพลิก-คว่ำ';
+    card.appendChild(note);
+  }
+
+  // หมายเหตุ
+  const taWrap = document.createElement('div');
+  taWrap.style.marginTop = '10px';
+  taWrap.innerHTML = `<span style="font-size:12px;color:var(--muted)">หมายเหตุ / ปัญหาที่พบ</span>
+    <textarea id="ext-qr-note" rows="2" placeholder="บันทึกสิ่งที่พบ..."
+      style="width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:4px;resize:none;font-family:inherit">${existing?.note||''}</textarea>`;
+  card.appendChild(taWrap);
+
+  // ปุ่ม
+  const footer = document.createElement('div');
+  footer.className = 'modal-footer';
+  footer.style.cssText = 'margin-top:14px;padding-top:14px;border-top:1px solid var(--border)';
+  footer.innerHTML = `
+    <button class="btn btn-red" onclick="submitExtQR('fail')">✗ มีปัญหา</button>
+    <button class="btn btn-green" onclick="submitExtQR('pass')">✓ ผ่าน</button>
+  `;
+  card.appendChild(footer);
+  wrap.appendChild(card);
+}
+
+function setExtCheck(idx, val, btn){
+  const wrap = document.getElementById('ext-qr-checklist');
+  if(!wrap._checkState) wrap._checkState = {};
+  wrap._checkState[idx] = val;
+  // update button styles in the row
+  const siblings = btn.parentElement.querySelectorAll('.chk-btn');
+  siblings.forEach(b=>b.className='chk-btn');
+  btn.className = 'chk-btn ' + val;
+}
+
+async function submitExtQR(status){
+  const wrap = document.getElementById('ext-qr-checklist');
+  const tank = wrap._tank;
+  const inspector = document.getElementById('ext-qr-inspector')?.value||'';
+  if(!inspector){ showToast('⚠ กรุณาเลือกชื่อผู้ตรวจก่อน'); return; }
+  localStorage.setItem('last_inspector', inspector);
+  const month = document.getElementById('ext-month').value;
+  const isCO2 = tank.type==='CO2';
+  const checks = (isCO2?EXT_CHECKS_CO2:EXT_CHECKS_FULL).map((_,i)=>wrap._checkState[i]==='pass');
+  const note = document.getElementById('ext-qr-note')?.value||'';
+  const key = String(tank.num);
+  extCache[key] = {type:tank.type, status, checks, note, inspector};
+  buildExtGrid();
+  showToast(`บันทึกถังที่ ${tank.num}...`);
+  // อัพเดต UI ใน checklist card
+  const badge = wrap.querySelector('.badge');
+  if(badge){ badge.className=`badge ${status==='pass'?'badge-ok':'badge-fail'}`; badge.textContent=status==='pass'?'ผ่าน':'มีปัญหา'; }
+  try{
+    await api('POST',{action:'saveExt',month,num:tank.num,loc:tank.loc,floor:tank.floor,type:tank.type,checks,status,note,inspector});
+    showToast(`✓ บันทึกถังที่ ${tank.num} สำเร็จ`);
+    loadSummary();
+  }catch(e){ showToast('⚠ บันทึกแบบ Offline'); }
+}
+
+function openExtModal(tank, existing){
+  currentExt=tank; modalChecks={};
+  const isCO2=tank.type==='CO2';
+  const checks=isCO2?EXT_CHECKS_CO2:EXT_CHECKS_FULL;
+  document.getElementById('modal-ext-title').textContent=`ถังที่ ${tank.num}`;
+  document.getElementById('modal-ext-sub').textContent=`${tank.type} | ${tank.floor} | ${tank.loc}`;
+  document.getElementById('modal-ext-note').value=existing?.note||'';
+  document.getElementById('co2-note').style.display=isCO2?'block':'none';
+  // restore ชื่อผู้ตรวจล่าสุด
+  const saved=localStorage.getItem('last_inspector')||'';
+  const inspSel=document.getElementById('modal-ext-inspector');
+  if(saved && inspSel) inspSel.value=saved;
+  const body=document.getElementById('modal-ext-body'); body.innerHTML='';
+  checks.forEach((c,i)=>{
+    const checked=existing?.checks?.[i]??false;
+    if(checked)modalChecks[i]=true;
+    const div=document.createElement('div'); div.className='modal-check';
+    div.innerHTML=`<input type="checkbox" id="mc${i}" ${checked?'checked':''}/><label for="mc${i}">${c}</label>`;
+    div.querySelector('input').onchange=e=>modalChecks[i]=e.target.checked;
+    body.appendChild(div);
+  });
+  document.getElementById('ext-modal').classList.add('open');
+}
+
+async function submitExt(status){
+  // ดึงชื่อจาก modal dropdown (ที่เด้งขึ้นมาพร้อมเช็คลิสต์)
+  const inspector=document.getElementById('modal-ext-inspector')?.value||document.getElementById('ext-inspector')?.value||'ไม่ระบุ';
+  if(!inspector){ showToast('⚠ กรุณาเลือกชื่อผู้ตรวจก่อน'); return; }
+  localStorage.setItem('last_inspector', inspector);
+  const month=document.getElementById('ext-month').value;
+  const isCO2=currentExt.type==='CO2';
+  const checks=(isCO2?EXT_CHECKS_CO2:EXT_CHECKS_FULL).map((_,i)=>!!modalChecks[i]);
+  const note=document.getElementById('modal-ext-note').value;
+  const key=String(currentExt.num);
+  extCache[key]={type:currentExt.type,status,checks,note,inspector};
+  buildExtGrid(); closeModal('ext-modal');
+  showToast(`บันทึกถังที่ ${currentExt.num}...`);
+  try{
+    await api('POST',{action:'saveExt',month,num:currentExt.num,loc:currentExt.loc,floor:currentExt.floor,type:currentExt.type,checks,status,note,inspector});
+    showToast(`✓ บันทึกถังที่ ${currentExt.num} สำเร็จ`);
+    // อัพเดตสรุปอัตโนมัติ
+    loadSummary();
+  }catch(e){showToast('⚠ บันทึกแบบ Offline');}
+}
+
+// ====== ประตูหนีไฟ ======
+async function loadDoorData(){
+  const date=document.getElementById('door-date').value;
+  try{const r=await api('GET',{action:'getDoor',date});doorCache=r.data||{};buildDoorList();}catch(e){buildDoorList();}
+}
+
+function buildDoorList(){
+  const grid=document.getElementById('door-grid');
+  const list=document.getElementById('door-list');
+  if(grid) grid.innerHTML='';
+  list.innerHTML='';
+  let pass=0, fail=0;
+
+  DOOR_POINTS.forEach((name,pi)=>{
+    const d=doorCache[pi];
+    const status=d?.status||'pending';
+    const canEdit=isQRMode && currentQRPoint!==null && currentQRPoint===pi;
+
+    // ===== GRID BUTTON (แสดงเสมอ เหมือนถังดับเพลิง) =====
+    if(grid){
+      const btn=document.createElement('button');
+      const bgColor=status==='pass'?'var(--green-bg)':status==='fail'?'var(--red-bg)':'#fafafa';
+      const bdColor=status==='pass'?'var(--green)':status==='fail'?'var(--red)':'var(--border)';
+      const txColor=status==='pass'?'var(--green-dark)':status==='fail'?'var(--red-dark)':'var(--muted)';
+      btn.style.cssText=`border-radius:8px;border:1px solid ${bdColor};background:${bgColor};cursor:default;padding:8px 6px;display:flex;flex-direction:column;align-items:center;gap:3px;width:100%;text-align:center`;
+      const icon=status==='pass'?'✅':status==='fail'?'❌':'🚪';
+      const label=name.replace(' — ','\n');
+      btn.innerHTML=`<span style="font-size:20px">${icon}</span><span style="font-size:11px;font-weight:600;color:${txColor};line-height:1.3;white-space:pre-line">${label}</span><span style="font-size:10px;color:${txColor}">${status==='pass'?'ผ่าน':status==='fail'?'มีปัญหา':'รอตรวจ'}</span>`;
+      btn.title=name;
+      grid.appendChild(btn);
+    }
+
+    if(status==='pass') pass++;
+    else if(status==='fail') fail++;
+
+    // ===== DETAIL CARD (เฉพาะเมื่อสแกน QR จุดนั้น) =====
+    if(canEdit){
+      const bc=status==='pass'?'badge-ok':status==='fail'?'badge-fail':'badge-pending';
+      const bt=status==='pass'?'ผ่าน':status==='fail'?'มีปัญหา':'รอตรวจ';
+      const card=document.createElement('div'); card.className='card'; card.id='door-card-'+pi;
+      card.style.cssText='border:2px solid #ffb300;margin-top:4px';
+      card.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><span style="font-weight:500;font-size:14px">🔳 ${name}</span><span class="badge ${bc}">${bt}</span></div>`;
+
+      // ช่องผู้ตรวจ + กะ
+      const meta=document.createElement('div'); meta.className='meta-row'; meta.style.marginBottom='10px';
+      meta.innerHTML=`<div class="meta-field"><span class="meta-label">ผู้ตรวจ</span><select id="door-inspector" onchange="localStorage.setItem('last_inspector',this.value)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:100%"><option value="">-- เลือกผู้ตรวจ --</option>${INSPECTORS.map(n=>`<option value="${n}">${n}</option>`).join('')}</select></div><div class="meta-field"><span class="meta-label">กะ</span><select id="door-shift" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;width:100%"><option>เช้า</option><option>บ่าย</option><option>ดึก</option></select></div>`;
+      card.appendChild(meta);
+      // auto-restore ผู้ตรวจคนล่าสุด
+      const saved=localStorage.getItem('last_inspector')||'';
+      const sel=meta.querySelector('#door-inspector');
+      if(saved && sel) sel.value=saved;
+
+      DOOR_CHECKS.forEach((c,ci)=>{
+        const val=d?.checks?.[ci]||'';
+        const row=document.createElement('div'); row.className='check-row';
+        row.innerHTML=`<span class="check-label">${c}</span><div class="chk-grp"><button class="chk-btn${val==='pass'?' pass':''}" onclick="setDoorCheck(${pi},${ci},'pass')">✓</button><button class="chk-btn${val==='fail'?' fail':''}" onclick="setDoorCheck(${pi},${ci},'fail')">✗</button></div>`;
+        card.appendChild(row);
+        if(ci===10){
+          const slRow=document.createElement('div'); slRow.style.cssText='padding:6px 0 4px;display:flex;align-items:center;gap:8px';
+          slRow.innerHTML=`<span style="font-size:12px;color:var(--muted);white-space:nowrap">เลขที่ Strip Lock:</span><input type="text" id="sl-num-${pi}" value="${d?.striplockNum||''}" placeholder="เช่น SL-001" style="flex:1;padding:5px 8px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px"/>`;
+          slRow.querySelector('input').onchange=e=>{ if(!doorCache[pi])doorCache[pi]={checks:{},note:'',status:'pending'}; doorCache[pi].striplockNum=e.target.value; };
+          card.appendChild(slRow);
+        }
+      });
+
+      const ta=document.createElement('textarea');
+      ta.rows=1; ta.placeholder='หมายเหตุ...'; ta.value=d?.note||''; ta.style.cssText='width:100%;padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius);font-size:13px;margin-top:8px;resize:none;font-family:inherit';
+      ta.onchange=()=>{ if(!doorCache[pi])doorCache[pi]={checks:{},note:'',status:'pending'}; doorCache[pi].note=ta.value; };
+      card.appendChild(ta);
+      list.appendChild(card);
+    }
+  });
+
+  // Update progress bar
+  const done=pass+fail;
+  const progFill=document.getElementById('door-prog-fill');
+  const progLabel=document.getElementById('door-prog-label');
+  const passEl=document.getElementById('door-pass-count');
+  const failEl=document.getElementById('door-fail-count');
+  const pendEl=document.getElementById('door-pending-count');
+  if(progFill) progFill.style.width=(done/10*100)+'%';
+  if(progLabel) progLabel.textContent=`${done} / 10 จุด`;
+  if(passEl) passEl.textContent=pass;
+  if(failEl) failEl.textContent=fail;
+  if(pendEl) pendEl.textContent=10-done;
+}
+
+async function setDoorCheck(pi,ci,val){
+  if(!doorCache[pi])doorCache[pi]={checks:{},note:'',striplockNum:'',status:'pending'};
+  doorCache[pi].checks[ci]=val;
+  const allDone=DOOR_CHECKS.every((_,i)=>doorCache[pi].checks[i]);
+  const anyFail=Object.values(doorCache[pi].checks).some(v=>v==='fail');
+  doorCache[pi].status=allDone?(anyFail?'fail':'pass'):'pending';
+  // preserve striplock input value before rebuild
+  const slInput=document.getElementById(`sl-num-${pi}`);
+  if(slInput) doorCache[pi].striplockNum=slInput.value;
+  buildDoorList();
+  if(allDone){
+    const date=document.getElementById('door-date').value;
+    const inspector=document.getElementById('door-inspector')?.value||'';
+    if(!inspector){ showToast('⚠ กรุณาเลือกชื่อผู้ตรวจก่อน'); return; }
+    localStorage.setItem('last_inspector', inspector);
+    const shift=document.getElementById('door-shift')?.value||'เช้า';
+    const d=doorCache[pi];
+    try{
+      await api('POST',{action:'saveDoor',date,shift,pointIdx:pi,pointName:DOOR_POINTS[pi],checks:d.checks,status:d.status,note:d.note||'',striplockNum:d.striplockNum||'',inspector});
+      showToast(`✓ บันทึกจุดที่ ${pi+1} สำเร็จ`);
+      loadSummary();
+    }catch(e){showToast('⚠ Offline');}
+  }
+}
+
+// ====== EXPORT ======
+function exportExtCSV(){
+  let csv='\uFEFFถังที่,บริเวณ,ชั้น,ประเภท,สถานะ,มาตรวัด,ซีล,ตัวถัง,สายฉีด,พลิก-คว่ำ,หมายเหตุ,ผู้ตรวจ\n';
+  TANK_DATA.forEach(t=>{
+    const d=extCache[String(t.num)]||extCache[t.num];
+    if(d) csv+=`${t.num},"${t.loc}",${t.floor},${t.type},${d.status},${d.checks?.map(c=>c?'✓':'✗').join(',')||''},${d.note||''},${d.inspector||''}\n`;
+  });
+  downloadCSV(csv,`ถังดับเพลิง_${document.getElementById('ext-month').value}.csv`);
+}
+
+function exportDoorCSV(){
+  let csv='\uFEFFจุดที่,ชื่อจุด,สถานะ,เปิด-ปิด,แขนกด,ป้าย,ทางเดิน,บานพับ,หมายเหตุ\n';
+  DOOR_POINTS.forEach((name,pi)=>{
+    const d=doorCache[pi];
+    if(d) csv+=`${pi+1},"${name}",${d.status},${Object.values(d.checks||{}).map(c=>c==='pass'?'✓':'✗').join(',')},${d.note||''}\n`;
+  });
+  downloadCSV(csv,`ประตูหนีไฟ_${document.getElementById('door-date').value}.csv`);
+}
+
+
+function downloadCSV(content,filename){
+  const blob=new Blob([content],{type:'text/csv;charset=utf-8;'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=filename; a.click();
+}
+
+// ====== สรุป ======
+async function loadSummary(){
+  try{
+    const r=await api('GET',{action:'getSummary'});
+    const{ext,door}=r;
+    const now=new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    document.getElementById('sum-last-update').textContent=`อัพเดตล่าสุด ${now}`;
+
+    // ===== ถังดับเพลิง =====
+    const extMonth=document.getElementById('ext-month')?.value||new Date().toISOString().slice(0,7);
+    const thMonth=new Date(extMonth+'-01').toLocaleDateString('th-TH',{month:'long',year:'numeric'});
+    document.getElementById('sum-ext-month').textContent=thMonth;
+    document.getElementById('sum-ext-checked').textContent=ext.checked;
+    document.getElementById('sum-ext-bar').style.width=(ext.checked/92*100)+'%';
+    document.getElementById('sum-ext-pass').textContent=ext.pass;
+    document.getElementById('sum-ext-fail').textContent=ext.fail;
+    document.getElementById('sum-ext-pending').textContent=92-ext.checked;
+
+    // mini grid ถัง — แสดง dot สีทุกถัง
+    const extMini=document.getElementById('sum-ext-mini');
+    extMini.innerHTML='';
+    const extStatuses=ext.statuses||{};
+    for(let i=1;i<=92;i++){
+      const s=extStatuses[String(i)]||extStatuses[i]||'pending';
+      const dot=document.createElement('div');
+      dot.style.cssText=`width:14px;height:14px;border-radius:3px;background:${s==='pass'?'var(--green)':s==='fail'?'var(--red)':'#ddd'};title="ถังที่ ${i}"`;
+      dot.title=`ถังที่ ${i}: ${s==='pass'?'ผ่าน':s==='fail'?'มีปัญหา':'รอตรวจ'}`;
+      extMini.appendChild(dot);
+    }
+
+    // ===== ประตูหนีไฟ =====
+    const today=new Date().toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'});
+    document.getElementById('sum-door-date').textContent=today;
+    document.getElementById('sum-door-checked').textContent=door.checked;
+    document.getElementById('sum-door-bar').style.width=(door.checked/10*100)+'%';
+    document.getElementById('sum-door-pass').textContent=door.pass;
+    document.getElementById('sum-door-fail').textContent=door.fail;
+    document.getElementById('sum-door-pending').textContent=10-door.checked;
+
+    // door status grid — แสดงทุกจุดพร้อมชื่อ
+    const doorMini=document.getElementById('sum-door-mini');
+    doorMini.innerHTML='';
+    const doorStatuses=door.statuses||{};
+    DOOR_POINTS.forEach((name,pi)=>{
+      const s=doorStatuses[String(pi)]||'pending';
+      const chip=document.createElement('div');
+      chip.style.cssText=`padding:4px 8px;border-radius:6px;font-size:11px;font-weight:500;background:${s==='pass'?'var(--green-bg)':s==='fail'?'var(--red-bg)':'#f0f0ee'};color:${s==='pass'?'var(--green-dark)':s==='fail'?'var(--red-dark)':'var(--muted)'}`;
+      chip.textContent=(s==='pass'?'✓ ':s==='fail'?'✗ ':'○ ')+name.split(' — ')[0];
+      doorMini.appendChild(chip);
+    });
+
+    // warning box
+    const warns=[];
+    if(ext.fail>0) warns.push(`⚠ ถังดับเพลิงมีปัญหา ${ext.fail} ถัง กรุณาดำเนินการแก้ไข`);
+    if(door.fail>0) warns.push(`⚠ ประตูหนีไฟมีปัญหา ${door.fail} จุด กรุณาดำเนินการแก้ไข`);
+    const warnBox=document.getElementById('sum-warning');
+    if(warns.length>0){ warnBox.style.display='block'; warnBox.innerHTML=warns.join('<br>'); }
+    else { warnBox.style.display='none'; }
+
+  }catch(e){
+    document.getElementById('sum-last-update').textContent='โหลดไม่สำเร็จ';
+  }
+}
+
+// ====== UTILS ======
+let summaryInterval=null;
+
+// Auto-refresh ข้อมูลถังและประตูทุก 60 วินาที เพื่อให้สีสถานะอัพเดตเสมอ
+setInterval(()=>{
+  const activeTab=document.querySelector('.tab.active');
+  if(!activeTab) return;
+  const tabText=activeTab.textContent;
+  if(tabText.includes('ถังดับเพลิง')) loadExtData();
+  else if(tabText.includes('ประตูหนีไฟ')) loadDoorData();
+}, 60000);
+
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach((b,i)=>b.classList.toggle('active',['ext','door','summary'][i]===t));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+t).classList.add('active');
+  if(t==='summary'){
+    loadSummary();
+    if(summaryInterval) clearInterval(summaryInterval);
+    summaryInterval=setInterval(loadSummary, 30000);
+  } else {
+    if(summaryInterval){ clearInterval(summaryInterval); summaryInterval=null; }
+    // โหลดข้อมูลใหม่ทุกครั้งที่สลับแท็บ เพื่อให้สีสถานะอัพเดต
+    if(t==='ext') loadExtData();
+    if(t==='door') loadDoorData();
+  }
+}
+
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+function setSyncStatus(type,label){
+  document.getElementById('sync-dot').className='dot'+(type==='loading'?' loading':type==='error'?' error':'');
+  document.getElementById('sync-label').textContent=label;
+}
+function showToast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+}
+function timeNow(){return new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'});}
+document.querySelectorAll('.modal-backdrop').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+</script>
+</body>
+</html>
